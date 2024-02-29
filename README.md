@@ -18,7 +18,11 @@ Install Dextro easily via pip:
 pip install dextro
 ```
 
-Install with all dependencies 
+Install with all dependencies:
+
+```bash
+pip install dextro[all]
+```
 
 ### Index Your Dataset
 
