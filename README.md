@@ -18,6 +18,8 @@ Install Dextro easily via pip:
 pip install dextro
 ```
 
+Install with all dependencies 
+
 ### Index Your Dataset
 
 Dextro works with datasets in JSON Lines format, split across multiple files. To index such a dataset, organize your files as follows:
@@ -95,13 +97,13 @@ Dextro allows for advanced data filtering directly on the index, facilitating ef
 
 ```python
 import polars as pl
-from dextro.dataset import IndexedTextDataset
+from dextro.dataset import IndexedDataset
 
 # Example filter: Select texts within a specific character length range
 # This assumes that the `TextLength` enricher has been used during indexing
-dataset = IndexedTextDataset(
+dataset = IndexedDataset(
     data_root='dataset/',
-    index_filter=(256 <= pl.col('text_length')) & (pl.col('text_length') <= 1024)
+    index_filter=(256 <= pl.col('meta_text_length')) & (pl.col('meta_text_length') <= 1024)
 )
 ```
 
