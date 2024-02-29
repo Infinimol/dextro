@@ -8,7 +8,8 @@ from tqdm import tqdm
 from pathlib import Path
 from typing import Callable, Any, Iterator, Sequence
 from dextro.enrichers import BaseEnricher, BaseBatchedEnricher, Enricher
-from dextro.types import DatasetRecord, PathLike
+from dextro.types import DatasetRecord, FileItem, PathLike
+from dextro.loaders import BaseLoader, default_loader
 
 EnricherFunction = Callable[[DatasetRecord], DatasetRecord]
 BatchedEnricherFunction = Callable[[list[DatasetRecord]], list[DatasetRecord]]
@@ -19,7 +20,6 @@ class FileIndexer:
     Indexes records in a single file.
 
     Args:
-        text_key: The key of the text field in the serialized item. Defaults to 'text'.
         open_fn: A function to open the file. Defaults to open.
         load_fn: A function to load the serialized item from the file. Defaults to json.loads.
         batch_size: Internal processing batch size. Higher values may improve the efficiency of batched enrichers. Defaults to 1.
@@ -30,15 +30,11 @@ class FileIndexer:
 
     def __init__(
         self,
-        text_key: str = "text",
-        open_fn: Callable[[str], Any] = open,
-        load_fn: Callable[[Any], DatasetRecord] = json.loads,
+        loader: BaseLoader = default_loader,
         batch_size: int = 1,
         enrichers: Enricher | Sequence[Enricher] | None = None,
     ):
-        self.text_key = text_key
-        self.open_fn = open_fn
-        self.load_fn = load_fn
+        self.loader = loader
         self.batch_size = batch_size
         self.enrichers = []
         self.batched_enrichers = []
@@ -80,14 +76,10 @@ class FileIndexer:
             if not batch:
                 break
         return batch
-
-    def _process_batch(self, batch: list[DatasetRecord]):
+    
+    def _finish_batch(self, batch: list[FileItem]):
         for item in batch:
-            yield {
-                k: v
-                for k, v in item.items()
-                if k in self.KEEP_KEYS or k.startswith("meta_")
-            }
+            yield item.meta.as_dict()
 
     def __call__(self, path: PathLike) -> Iterator[DatasetRecord]:
         """
@@ -108,46 +100,25 @@ class FileIndexer:
         """
         path = Path(path)
 
-        with self.open_fn(path, "rb") as fp:
-            batch = []
+        batch = []
 
-            while True:
-                start = fp.tell()
+        for item in self.loader.iter_file_items(path):
+            item = self._enrich_item(item)
 
-                line = fp.readline().strip()
+            if not item:
+                continue
 
-                if not line:
-                    break
+            batch.append(item)
 
-                end = start + len(line)
-
-                item = self.load_fn(line)
-
-                item.update(
-                    {
-                        "filename": path.name,
-                        "start": start,
-                        "end": end,
-                        "text_length": len(item[self.text_key]),
-                    }
-                )
-
-                item = self._enrich_item(item)
-
-                if not item:
-                    continue
-
-                batch.append(item)
-
-                if len(batch) >= self.batch_size:
-                    batch = self._enrich_batch(batch)
-                    yield from self._process_batch(batch)
-
-                    batch = []
-
-            if batch:
+            if len(batch) >= self.batch_size:
                 batch = self._enrich_batch(batch)
-                yield from self._process_batch(batch)
+                yield from self._finish_batch(batch)
+
+                batch = []
+
+        if batch:
+            batch = self._enrich_batch(batch)
+            yield from self._finish_batch(batch)
 
 
 class DirectoryIndexer:
@@ -198,7 +169,10 @@ class DirectoryIndexer:
         """
         dataset_root = Path(dataset_root)
 
-        paths = [path for pattern in self.glob for path in dataset_root.glob(pattern)]
+        paths = sorted(path for pattern in self.glob for path in dataset_root.glob(pattern))
+
+        if not paths:
+            raise ValueError(f"No files found matching glob patterns {self.glob!r} in {dataset_root}")
 
         if self.num_workers:
             with mp.Pool(self.num_workers) as pool:
@@ -231,9 +205,9 @@ class DirectoryIndexer:
 
 def index_dataset(
     data_root: Path,
-    text_key: str = "text",
     batch_size: int = 1,
     max_iter: int | None = None,
+    loader: BaseLoader = default_loader,
     glob: str | list[str] = ("*.jsonl", "*.json"),
     num_workers: int | None = None,
     enrichers: list[Enricher] | None = None,
@@ -260,7 +234,9 @@ def index_dataset(
     data_root = Path(data_root)
 
     file_indexer = FileIndexer(
-        text_key=text_key, batch_size=batch_size, enrichers=enrichers
+        loader=loader,
+        batch_size=batch_size,
+        enrichers=enrichers
     )
 
     directory_indexer = DirectoryIndexer(

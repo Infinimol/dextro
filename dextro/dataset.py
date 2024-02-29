@@ -6,6 +6,8 @@ import atexit
 from pathlib import Path
 from torch.utils.data import Dataset
 
+from dextro.loaders import BaseLoader, default_loader
+
 
 class IndexedDataset(Dataset):
     """
@@ -23,14 +25,12 @@ class IndexedDataset(Dataset):
         self,
         root: str | Path,
         index_filename: str = "index.parquet",
-        load_fn: Callable[[bytes], dict] = json.loads,
-        text_key: str = "text",
+        loader: BaseLoader = default_loader,
         index_filter=None,
     ):
         self.root = Path(root)
         self.index = pl.read_parquet(self.root / index_filename)
-        self.load_fn = load_fn
-        self.text_key = text_key
+        self.loader = loader
 
         if index_filter is not None:
             self.index = self.index.filter(index_filter)
@@ -59,11 +59,8 @@ class IndexedDataset(Dataset):
         return len(self.index)
 
     def __getitem__(self, idx):
-        filename, start, end, *_ = self.index.row(idx)
-        buffer = self.mem_maps[filename][start:end]
-        item = self.load_fn(buffer)
-
-        if isinstance(item, str):
-            return item
-
-        return item[self.text_key]
+        item_meta = self.index.row(idx, named=True)
+        mem_map = self.mem_maps[item_meta["filename"]]
+        buffer = mem_map[item_meta['start']:item_meta['end']]
+        item = self.loader.load_item(buffer)
+        return item

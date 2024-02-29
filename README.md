@@ -34,8 +34,8 @@ dataset/
 
 Example content (`dataset/part001.jsonl`):
 ```json
-{"text": "first item"}
-{"text": "second item"}
+{"text": "first item", ...}
+{"text": "second item", ...}
 ```
 
 Run the following command to index your dataset, creating an `index.parquet` file in the dataset folder:

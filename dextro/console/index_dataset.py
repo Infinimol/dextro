@@ -3,6 +3,7 @@ import polars as pl
 
 from pathlib import Path
 from dextro.enrichers import enricher_registry
+from dextro.loaders import loader_registry
 from dextro.indexing import index_dataset
 
 
@@ -37,9 +38,10 @@ def add_arguments(parser: argparse.ArgumentParser):
         help="Internal processing batch size. Higher values may improve the efficiency of batched enrichers.",
     )
     parser.add_argument(
-        "--text_key",
-        default="text",
-        help="The name of the text field in the dataset. Defaults to 'text'.",
+        "--loader",
+        choices=list(loader_registry.keys()),
+        default="jsonl",
+        help="The loader to use for reading the dataset. Defaults to 'jsonl'.",
     )
     parser.add_argument(
         "--enrichers",
@@ -63,11 +65,12 @@ def main(args: argparse.Namespace):
     root = args.data_root
 
     enrichers = [enricher_registry[name]() for name in args.enrichers]
-
+    loader = loader_registry[args.loader]()
+    
     index_df = index_dataset(
         data_root=root,
-        text_key=args.text_key,
         batch_size=args.batch_size,
+        loader=loader,
         max_iter=args.max_iter,
         glob=args.glob,
         enrichers=enrichers,

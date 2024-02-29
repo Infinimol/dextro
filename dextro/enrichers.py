@@ -1,19 +1,19 @@
 from abc import abstractmethod, ABC
 from typing import Iterator
-from dextro.types import DatasetRecord
+from dextro.types import FileItem
 
 
 class BaseEnricher(ABC):
     @abstractmethod
-    def enrich_item(self, item: DatasetRecord) -> DatasetRecord | None:
+    def enrich_item(self, item: FileItem) -> FileItem | None:
         pass
 
 
 class BaseBatchedEnricher(ABC):
     @abstractmethod
     def enrich_batch(
-        self, items: list[DatasetRecord]
-    ) -> Iterator[DatasetRecord | None]:
+        self, items: list[FileItem]
+    ) -> Iterator[FileItem | None]:
         pass
 
 
@@ -31,8 +31,8 @@ class TextLength(BaseEnricher):
     def __init__(self, text_key: str = "text"):
         self.text_key = text_key
 
-    def enrich_item(self, item: DatasetRecord) -> DatasetRecord:
-        item["meta_text_length"] = len(item[self.text_key])
+    def enrich_item(self, item: FileItem) -> FileItem:
+        item.add_info('text_length', len(item.data[self.text_key]))
         return item
 
 
@@ -55,6 +55,7 @@ class LanguageDetectionEnricher(BaseBatchedEnricher):
         languages: list[str] | str | None = None,
         detect_multiple: bool = False,
         low_accuracy_mode: bool = False,
+        text_key: str = "text",
     ):
         try:
             from lingua import LanguageDetectorBuilder
@@ -69,6 +70,7 @@ class LanguageDetectionEnricher(BaseBatchedEnricher):
         self.languages = languages
         self.detect_multiple = detect_multiple
         self.low_accuracy_mode = low_accuracy_mode
+        self.text_key = text_key
 
         builder = LanguageDetectorBuilder
 
@@ -83,9 +85,9 @@ class LanguageDetectionEnricher(BaseBatchedEnricher):
         self.detector = builder.build()
 
     def enrich_batch(
-        self, items: list[DatasetRecord]
-    ) -> Iterator[DatasetRecord | None]:
-        texts = [item["text"] for item in items]
+        self, items: list[FileItem]
+    ) -> Iterator[FileItem | None]:
+        texts = [item.data[self.text_key] for item in items]
 
         if self.detect_multiple:
             results = self.detector.detect_multiple_languages_in_parallel_of(texts)
@@ -98,12 +100,12 @@ class LanguageDetectionEnricher(BaseBatchedEnricher):
                 else:
                     langs = None
 
-                item["meta_language"] = sorted(langs)
+                item.add_info("language", sorted(langs))
         else:
             langs = self.detector.detect_languages_in_parallel_of(texts)
 
             for lang, item in zip(langs, items):
-                item["meta_language"] = lang.iso_code_639_1.name
+                item.add_info("language", lang.iso_code_639_1.name)
 
         return items
 

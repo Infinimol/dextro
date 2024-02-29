@@ -5,6 +5,7 @@ import pytest
 
 from pathlib import Path
 from dextro.indexing import index_dataset
+from dextro.types import FileItem, ItemMeta
 
 NUM_PARTITIONS = 3
 NUM_RECORDS_PER_PARTITION = 5
@@ -37,6 +38,22 @@ def record():
 @pytest.fixture
 def record_batch():
     return [sample_record() for _ in range(NUM_RECORDS_PER_PARTITION)]
+
+
+@pytest.fixture
+def file_item():
+    return FileItem(
+        meta=ItemMeta(start=0, end=10, filename='test.jsonl'),
+        data=sample_record()
+    )
+
+
+@pytest.fixture
+def file_item_batch():
+    return [FileItem(
+        meta=ItemMeta(start=0, end=10, filename='test.jsonl'),
+        data=sample_record()
+    ) for _ in range(NUM_RECORDS_PER_PARTITION)]
 
 
 @pytest.fixture

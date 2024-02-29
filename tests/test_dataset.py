@@ -9,4 +9,5 @@ def test_indexed_dataset(indexed_dataset):
 
     for i in range(len(dataset)):
         item = dataset[i]
-        assert isinstance(item, str)
+        assert isinstance(item, dict)
+        assert 'text' in item
