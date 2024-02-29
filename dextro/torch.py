@@ -1,7 +1,5 @@
-from typing import Callable
 import polars as pl
 import mmap
-import json
 import atexit
 from pathlib import Path
 from torch.utils.data import Dataset
@@ -61,6 +59,6 @@ class IndexedDataset(Dataset):
     def __getitem__(self, idx):
         item_meta = self.index.row(idx, named=True)
         mem_map = self.mem_maps[item_meta["filename"]]
-        buffer = mem_map[item_meta['start']:item_meta['end']]
+        buffer = mem_map[item_meta["start"] : item_meta["end"]]
         item = self.loader.load_item(buffer)
         return item

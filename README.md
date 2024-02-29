@@ -56,7 +56,7 @@ Dextro integrates with PyTorch's `Dataset` class, allowing for easy loading of i
 
 ```python
 from tqdm import tqdm
-from dextro.dataset import IndexedDataset
+from dextro.torch import IndexedDataset
 
 dataset = IndexedDataset(data_root='dataset/')
 
