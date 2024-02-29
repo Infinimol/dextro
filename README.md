@@ -45,7 +45,7 @@ Example content (`dataset/part001.jsonl`):
 Run the following command to index your dataset, creating an `index.parquet` file in the dataset folder:
 
 ```bash
-dextro create-index dataset/
+dextro index-dataset dataset/
 ```
 
 This index file includes the filename, start, and end positions for each sample, facilitating efficient data access.
@@ -111,7 +111,7 @@ dataset = IndexedDataset(
 )
 ```
 
-### Non-Language Datasets
+### Non-NLP Datasets
 
 Dextro can in principle work with any data modality as it this doesn't make assumptions about the data representation. 
 
