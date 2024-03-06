@@ -119,6 +119,10 @@ Dextro can in principle work with any data modality as it this doesn't make assu
 
 With the default settings, Dextro assumes that the dataset is formatted in JSON Lines format. Other formats are supporte via the `load_fn` option of the `FileIndexer` class. However, records currently have to be separated by lines.
 
+## Examples
+
+COMING SOON
+
 ## Development
 
 ### Install Dev Dependencies
